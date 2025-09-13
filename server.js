@@ -6,12 +6,18 @@ import userRoutes from './routes/Auth.route.js';
 import session from 'express-session';
 import passport from 'passport';
 import './configs/passport.js'; // Ensure passport config is imported
+import cors from 'cors';
 
 
 connectDB();
 
 
 const app = express();
+app.use(cors({
+  origin: ['http://localhost:3000', 'http://localhost:5173'],
+  credentials: true,
+  optionsSuccessStatus: 200 // For legacy browser support
+}));
 app.use(express.json());
 // Add these middleware AFTER your existing middleware but BEFORE your routes
 app.use(session({
