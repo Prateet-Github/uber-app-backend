@@ -15,6 +15,19 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  
+googleId: {
+  type: String,
+  sparse: true 
+},
+profilePicture: {
+  type: String,
+  default: ''
+},
+isVerified: {
+  type: Boolean,
+  default: false
+}
 }, { timestamps: true });
 
 // ✅ MIDDLEWARE MUST BE DEFINED BEFORE MODEL CREATION
