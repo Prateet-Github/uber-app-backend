@@ -7,24 +7,26 @@ import session from 'express-session';
 import passport from 'passport';
 import './configs/passport.js'; // Ensure passport config is imported
 import cors from 'cors';
-
+import { createServer } from "http";
+import { Server } from "socket.io";
 
 connectDB();
 
-
 const app = express();
+
 app.use(cors({
   origin: ['http://localhost:3000', 'http://localhost:5173'],
   credentials: true,
-  optionsSuccessStatus: 200 // For legacy browser support
+  optionsSuccessStatus: 200 
 }));
+
 app.use(express.json());
-// Add these middleware AFTER your existing middleware but BEFORE your routes
+
 app.use(session({
-  secret: process.env.SESSION_SECRET, // Add this to your .env file
+  secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  cookie: { secure: false } // Set to true in production with HTTPS
+  cookie: { secure: false } 
 }));
 
 app.use(passport.initialize());
@@ -32,10 +34,14 @@ app.use(passport.session());
 
 const PORT = process.env.PORT || 5001;
 
-console.log('Environment check:');
-console.log('NODE_ENV:', process.env.NODE_ENV);
-console.log('GOOGLE_CLIENT_ID exists:', !!process.env.GOOGLE_CLIENT_ID);
-console.log('GOOGLE_CLIENT_SECRET exists:', !!process.env.GOOGLE_CLIENT_SECRET);
+const httpServer = createServer(app);
+
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
+});
 
 app.get('/', (req, res) => {
   res.send('Hello, World!');
@@ -43,6 +49,6 @@ app.get('/', (req, res) => {
 
 app.use('/api/users', userRoutes);
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+httpServer.listen(PORT, () => {
+  console.log(`Server and Socket running on port ${PORT}`);
 });
