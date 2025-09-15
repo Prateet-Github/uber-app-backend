@@ -26,7 +26,8 @@ export const register = async (req, res) => {
       user: {
         _id: newUser._id,
         username: newUser.username,
-        email: newUser.email
+        email: newUser.email,
+        role: newUser.role  // Added role field
       }
     });
     
@@ -53,7 +54,8 @@ export const login = async (req, res) => {
         user: {
           _id: user._id,
           username: user.username,
-          email: user.email
+          email: user.email,
+          role: user.role  // Added role field
         }
       });
     } else {

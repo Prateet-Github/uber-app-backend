@@ -9,6 +9,8 @@ import './configs/passport.js'; // Ensure passport config is imported
 import cors from 'cors';
 import { createServer } from "http";
 import { Server } from "socket.io";
+import driverRoutes from './routes/Driver.route.js';
+
 
 connectDB();
 
@@ -48,6 +50,8 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/users', userRoutes);
+app.use('/api/driver',driverRoutes)
+
 
 httpServer.listen(PORT, () => {
   console.log(`Server and Socket running on port ${PORT}`);

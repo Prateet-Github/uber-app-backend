@@ -27,7 +27,22 @@ profilePicture: {
 isVerified: {
   type: Boolean,
   default: false
-}
+},
+   // Role field for RBAC
+
+    role: {
+      type: String,
+      enum: ["rider", "driver", "admin"],
+      default: "rider",
+    },
+
+     // Driver request status
+  driverRequest: {
+    type: String,
+    enum: ["none", "pending", "accepted", "rejected"],
+    default: "none",
+  }
+    
 }, { timestamps: true });
 
 // ✅ MIDDLEWARE MUST BE DEFINED BEFORE MODEL CREATION
