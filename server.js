@@ -5,12 +5,9 @@ import connectDB from './configs/db.js';
 import userRoutes from './routes/Auth.route.js';
 import session from 'express-session';
 import passport from 'passport';
-import './configs/passport.js'; // Ensure passport config is imported
+import './configs/passport.js'; 
 import cors from 'cors';
-import { createServer } from "http";
-import { Server } from "socket.io";
 import driverRoutes from './routes/Driver.route.js';
-
 
 connectDB();
 
@@ -36,15 +33,6 @@ app.use(passport.session());
 
 const PORT = process.env.PORT || 5001;
 
-const httpServer = createServer(app);
-
-const io = new Server(httpServer, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"],
-  },
-});
-
 app.get('/', (req, res) => {
   res.send('Hello, World!');
 });
@@ -53,6 +41,6 @@ app.use('/api/users', userRoutes);
 app.use('/api/driver',driverRoutes)
 
 
-httpServer.listen(PORT, () => {
-  console.log(`Server and Socket running on port ${PORT}`);
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });

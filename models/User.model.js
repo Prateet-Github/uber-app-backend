@@ -28,15 +28,12 @@ isVerified: {
   type: Boolean,
   default: false
 },
-   // Role field for RBAC
-
     role: {
       type: String,
       enum: ["rider", "driver", "admin"],
       default: "rider",
     },
-
-     // Driver request status
+    
   driverRequest: {
     type: String,
     enum: ["none", "pending", "accepted", "rejected"],
@@ -45,21 +42,19 @@ isVerified: {
     
 }, { timestamps: true });
 
-// ✅ MIDDLEWARE MUST BE DEFINED BEFORE MODEL CREATION
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) {
-    return next(); // Add return statement
+    return next(); 
   }
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
-  next(); // Call next() after hashing
+  next(); 
 });
 
 userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-// ✅ CREATE MODEL AFTER ALL MIDDLEWARE AND METHODS
 const User = mongoose.model('User', userSchema);
 
 export default User;
