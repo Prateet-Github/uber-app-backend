@@ -1,4 +1,3 @@
-// controllers/userController.js
 import User from "../models/User.model.js";
 
 // User requests to become driver
@@ -52,3 +51,33 @@ export const rejectDriver = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+// Admin views all pending requests
+export const pendingRequests = async (req, res) => {
+  try {
+    const pendingRequests = await User.find({ 
+      driverRequest: "pending" 
+    }).select('username email _id driverRequest');
+
+    res.json({ 
+      success: true, 
+      requests: pendingRequests 
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}
+
+// User views their own driver request status
+export const myStatus = async (req, res) => {
+    try {
+    const user = await User.findById(req.user._id).select('-password');
+    res.json({
+      success: true,
+      driverRequest: user.driverRequest,
+      role: user.role
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+}

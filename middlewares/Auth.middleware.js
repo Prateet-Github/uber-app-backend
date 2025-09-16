@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.model.js";
 
+// Middleware to protect routes
 const protect = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
@@ -43,6 +44,7 @@ const protect = async (req, res, next) => {
   }
 };
 
+// Middleware to authorize roles
 const authorizeRoles = (...roles) => {
   return (req, res, next) => {
     if (!roles.includes(req.user.role)) {
