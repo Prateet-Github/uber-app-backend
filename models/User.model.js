@@ -38,7 +38,25 @@ isVerified: {
     type: String,
     enum: ["none", "pending", "accepted", "rejected"],
     default: "none",
-  }
+  },
+  location: {
+  lat: { type: Number },
+  lng: { type: Number },
+  updatedAt: { type: Date },
+},
+isAvailable: {
+  type: Boolean,
+  default: false, // drivers can toggle availability
+},
+currentRide: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "Ride",
+  default: null,
+},
+rating: {
+  average: { type: Number, default: 5 },
+  count: { type: Number, default: 0 },
+},
     
 }, { timestamps: true });
 
