@@ -171,3 +171,34 @@ export const getRide = async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to get ride" });
   }
 };
+
+// Get payment details after ride completion
+export const getPaymentDetails = async (req, res) => {
+  try {
+    const { rideId } = req.params;
+
+    const ride = await Ride.findById(rideId).populate("driverId passengerId");
+    if (!ride) {
+      return res.status(404).json({ success: false, message: "Ride not found" });
+    }
+
+    if (ride.status !== "completed") {
+      return res.status(400).json({ success: false, message: "Ride not completed yet" });
+    }
+
+    res.json({
+      success: true,
+      ride: {
+        _id: ride._id,
+        fare: ride.fare,
+        pickup: ride.pickup,
+        drop: ride.drop,
+        driver: ride.driverId.username,
+        passenger: ride.passengerId.username,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching payment details:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch payment details" });
+  }
+};

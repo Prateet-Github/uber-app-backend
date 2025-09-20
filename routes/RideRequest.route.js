@@ -24,4 +24,6 @@ router.patch("/:rideId/cancel", protect, authorizeRoles("rider"), cancelRide);
 // Both driver and rider should be able to view ride details
 router.get("/:rideId", protect, getRide);
 
+router.get("/:rideId/payment", protect, authorizeRoles("rider", "driver"), getRide);
+
 export default router;
