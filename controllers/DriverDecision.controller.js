@@ -1,4 +1,5 @@
 import User from "../models/User.model.js";
+import Ride from "../models/Ride.model.js";
 
 // Update driver availability (online/offline)
 export const toggleAvailability = async (req, res) => {
@@ -106,5 +107,21 @@ export const updateRating = async (req, res) => {
   } catch (error) {
     console.error("Error updating rating:", error);
     res.status(500).json({ success: false, message: "Failed to update rating" });
+  }
+};
+
+// Get all pending ride requests (for drivers to view)
+export const getPendingRides = async (req, res) => {
+  try {
+    // Only pending rides
+    const rides = await Ride.find({ status: "pending" }).populate(
+      "passengerId",
+      "username email"
+    );
+
+    return res.json({ success: true, rides });
+  } catch (error) {
+    console.error("Error fetching pending rides:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch rides" });
   }
 };
