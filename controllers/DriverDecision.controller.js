@@ -25,10 +25,14 @@ export const toggleAvailability = async (req, res) => {
 // Update driver location (called via socket or API)
 export const updateLocation = async (req, res) => {
   try {
-    const { userId } = req.params;
     const { lat, lng } = req.body;
+    const driverId = req.user.id; // from protect middleware
 
-    const driver = await User.findById(userId);
+    if (lat == null || lng == null) {
+      return res.status(400).json({ success: false, message: "Latitude and longitude are required" });
+    }
+
+    const driver = await User.findById(driverId);
     if (!driver || driver.role !== "driver") {
       return res.status(404).json({ success: false, message: "Driver not found" });
     }
