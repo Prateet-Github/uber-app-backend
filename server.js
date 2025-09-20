@@ -17,10 +17,11 @@ connectDB();
 
 const app = express();
 
+// ✅ Fixed CORS configuration
 app.use(cors({
-  origin: ['http://localhost:5173', '*'],
+  origin: ['http://localhost:5173', 'http://localhost:3000'], // Remove '*' when using credentials
   credentials: true,
-  methods: ["GET", "POST", "PATCH", "DELETE"],
+  methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
@@ -28,21 +29,30 @@ app.use(express.json());
 
 const httpServer = createServer(app);
 
+// ✅ Fixed Socket.io CORS configuration
 const io = new Server(httpServer, {
   cors: {
-    origin: ['*'],
+    origin: ['http://localhost:5173', 'http://localhost:3000'], // Specific origins, not '*'
     methods: ["GET", "POST"],
     credentials: true
   }
 });
+
+// ✅ Make io available to your routes (IMPORTANT!)
+app.set('io', io);
 
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
 
   socket.on("driverLocation", (data) => {
     console.log("Driver location:", data);
-  
     socket.broadcast.emit("driverLocationUpdate", data);
+  });
+
+  // ✅ Listen for ride completion events
+  socket.on("rideCompleted", (data) => {
+    console.log("Ride completed:", data);
+    socket.broadcast.emit("rideUpdate", data);
   });
 
   socket.on("disconnect", () => {
@@ -67,11 +77,11 @@ app.get('/', (req, res) => {
 });
 
 app.use('/api/users', userRoutes);
-app.use('/api/driver',driverRoutes)
+app.use('/api/driver', driverRoutes);
 app.use('/api/driver-decision', drivesRoutes);
 app.use('/api/rides', ridesRoutes);
 
-
 httpServer.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
+  console.log(`Socket.io server ready for connections`);
 });

@@ -23,27 +23,65 @@ export const toggleAvailability = async (req, res) => {
 };
 
 // Update driver location (called via socket or API)
-export const updateLocation = async (req, res) => {
+// Add/update this in your driver controller
+export const updateDriverLocation = async (req, res) => {
   try {
     const { lat, lng } = req.body;
-    const driverId = req.user.id; // from protect middleware
+    const driverId = req.user._id;
 
-    if (lat == null || lng == null) {
-      return res.status(400).json({ success: false, message: "Latitude and longitude are required" });
+    if (!lat || !lng) {
+      return res.status(400).json({
+        success: false,
+        message: "Latitude and longitude are required"
+      });
     }
 
+    // Update driver location and mark as available if not on a ride
     const driver = await User.findById(driverId);
-    if (!driver || driver.role !== "driver") {
-      return res.status(404).json({ success: false, message: "Driver not found" });
+    
+    if (!driver || driver.role !== 'driver') {
+      return res.status(404).json({
+        success: false,
+        message: "Driver not found"
+      });
     }
 
-    driver.location = { lat, lng, updatedAt: new Date() };
+    // Update location
+    driver.location = { lat, lng };
+    
+    // Set availability based on current ride status
+    driver.isAvailable = !driver.currentRide;
+    
     await driver.save();
 
-    res.json({ success: true, message: "Location updated", location: driver.location });
+    // Emit real-time location update to all riders
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('driver-location-update', {
+        driverId: driver._id,
+        username: driver.username,
+        location: { lat, lng },
+        isAvailable: driver.isAvailable
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Location updated successfully",
+      driver: {
+        _id: driver._id,
+        username: driver.username,
+        location: driver.location,
+        isAvailable: driver.isAvailable
+      }
+    });
   } catch (error) {
-    console.error("Error updating location:", error);
-    res.status(500).json({ success: false, message: "Failed to update location" });
+    console.error("Error updating driver location:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to update location",
+      error: error.message
+    });
   }
 };
 
@@ -82,35 +120,53 @@ export const assignCurrentRide = async (req, res) => {
 // Clear current ride (after completion or cancellation)
 export const clearCurrentRide = async (req, res) => {
   try {
-    const { userId } = req.params;
-
-    // 1. Find driver
-    const driver = await User.findById(userId);
-    if (!driver || driver.role !== "driver") {
-      return res.status(404).json({ success: false, message: "Driver not found" });
+    const userId = req.user._id;
+    const driver = req.user;
+    
+    if (driver.role !== "driver") {
+      return res.status(403).json({ success: false, message: "Access denied: Not a driver" });
     }
 
-    // 2. Check if driver actually has a ride
     if (!driver.currentRide) {
       return res.status(400).json({ success: false, message: "Driver has no active ride" });
     }
 
-    // 3. Find the ride
-    const ride = await Ride.findById(driver.currentRide);
+    // Find the ride and populate passenger info
+    const ride = await Ride.findById(driver.currentRide).populate('passengerId');
+    
     if (!ride) {
       return res.status(404).json({ success: false, message: "Ride not found" });
     }
 
-    // 4. Update driver
+    // Store passenger ID before updating
+    const passengerId = ride.passengerId._id;
+
+    // Update driver and ride
     driver.currentRide = null;
     driver.isAvailable = true;
-
-    // 5. Update ride (mark it as completed or cleared)
     ride.assignedDriver = null;
-    ride.status = "completed"; // or "cancelled", depending on your flow
+    ride.status = "completed"; // or "cancelled"
 
-    // 6. Save both updates together
     await Promise.all([driver.save(), ride.save()]);
+
+    // 🔥 EMIT REAL-TIME UPDATE TO THE SPECIFIC RIDER
+    const io = req.app.get('io');
+    if (io) {
+      io.emit(`ride-completed-${passengerId}`, {
+        type: 'ride-completed',
+        rideId: ride._id,
+        message: 'Your ride has been completed!',
+        ride: {
+          _id: ride._id,
+          status: ride.status,
+          fare: ride.fare,
+          pickup: ride.pickup,
+          drop: ride.drop
+        }
+      });
+      
+      console.log(`Emitted ride completion to passenger: ${passengerId}`);
+    }
 
     res.json({
       success: true,
@@ -120,7 +176,40 @@ export const clearCurrentRide = async (req, res) => {
     });
   } catch (error) {
     console.error("Error clearing ride:", error);
-    res.status(500).json({ success: false, message: "Failed to clear ride" });
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to clear ride",
+      error: error.message
+    });
+  }
+};
+
+
+// Add this to your driver controller
+export const getActiveDrivers = async (req, res) => {
+  try {
+    // Find all active drivers with location data
+    const activeDrivers = await User.find({
+      role: 'driver',
+      isAvailable: true,
+      'location.lat': { $exists: true },
+      'location.lng': { $exists: true },
+      // Optional: filter drivers updated within last 5 minutes
+      updatedAt: { $gte: new Date(Date.now() - 5 * 60 * 1000) }
+    }).select('username location isAvailable currentRide');
+
+    res.json({
+      success: true,
+      drivers: activeDrivers,
+      count: activeDrivers.length
+    });
+  } catch (error) {
+    console.error("Error fetching active drivers:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to fetch active drivers",
+      error: error.message
+    });
   }
 };
 
@@ -161,5 +250,38 @@ export const getPendingRides = async (req, res) => {
   } catch (error) {
     console.error("Error fetching pending rides:", error);
     res.status(500).json({ success: false, message: "Failed to fetch rides" });
+  }
+};
+
+// New: Get driver status including availability and current ride
+export const getDriverStatus = async (req, res) => {
+  try {
+    const driverId = req.user._id;
+    const driver = req.user;
+
+    if (driver.role !== 'driver') {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied: Not a driver"
+      });
+    }
+
+    res.json({
+      success: true,
+      driver: {
+        _id: driver._id,
+        username: driver.username,
+        isAvailable: driver.isAvailable,
+        currentRide: driver.currentRide,
+        location: driver.location
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching driver status:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch driver status",
+      error: error.message
+    });
   }
 };
