@@ -6,21 +6,33 @@ export const requestDriver = async (req, res) => {
     const user = await User.findById(req.user._id);
 
     if (!user) return res.status(404).json({ message: "User not found" });
-    if (user.driverRequest === "pending") {
-      return res.status(400).json({ message: "Request already pending" });
+
+    // 🚫 Already approved driver
+    if (user.role === "driver" && user.driverRequest === "accepted") {
+      return res
+        .status(400)
+        .json({ message: "You are already approved as a driver" });
     }
 
+    // 🚫 Already requested & pending
+    if (user.driverRequest === "pending") {
+      return res
+        .status(400)
+        .json({ message: "Your request is already pending approval" });
+    }
+
+    // ✅ First-time request
     user.driverRequest = "pending";
     await user.save();
 
-    res.json({ message: "Driver request submitted", user });
+    res.json({ message: "Driver request submitted successfully", user });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
-
 // Admin approves request
 export const approveDriver = async (req, res) => {
+   console.log("Approving user:", req.params.id);
   try {
     const user = await User.findById(req.params.id);
 
