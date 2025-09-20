@@ -5,12 +5,14 @@ import {
   assignCurrentRide,
   clearCurrentRide,
   updateRating,
+  getPendingRides
 } from "../controllers/DriverDecision.controller.js";
 
 import { protect, authorizeRoles } from "../middlewares/Auth.middleware.js";
 
 const router = express.Router();
 
+router.get("/pending", protect, authorizeRoles("driver"), getPendingRides);
 router.patch("/:userId/availability", protect, authorizeRoles("driver"), toggleAvailability);
 router.patch("/:userId/location", protect, authorizeRoles("driver"), updateLocation);
 router.patch("/:userId/assign-ride", protect, authorizeRoles("driver"), assignCurrentRide);
