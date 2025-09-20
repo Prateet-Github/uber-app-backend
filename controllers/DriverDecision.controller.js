@@ -46,40 +46,74 @@ export const updateLocation = async (req, res) => {
 // Assign current ride to driver (when accepted)
 export const assignCurrentRide = async (req, res) => {
   try {
-    const { userId } = req.params;
     const { rideId } = req.body;
+    const driver = req.user; // comes from protect middleware
 
-    const driver = await User.findById(userId);
-    if (!driver || driver.role !== "driver") {
-      return res.status(404).json({ success: false, message: "Driver not found" });
+    if (driver.currentRide) {
+      return res.status(400).json({ success: false, message: "Driver already has an active ride" });
     }
 
-    driver.currentRide = rideId;
-    driver.isAvailable = false; // driver is busy
-    await driver.save();
+    const ride = await Ride.findById(rideId);
+    if (!ride) {
+      return res.status(404).json({ success: false, message: "Ride not found" });
+    }
+    if (ride.assignedDriver) {
+      return res.status(400).json({ success: false, message: "Ride already assigned" });
+    }
 
-    res.json({ success: true, message: "Ride assigned to driver", driver });
+    driver.currentRide = ride._id;
+    driver.isAvailable = false;
+    ride.assignedDriver = driver._id;
+    ride.status = "assigned";
+
+    await Promise.all([driver.save(), ride.save()]);
+
+    res.json({ success: true, message: "Ride assigned successfully", driver, ride });
   } catch (error) {
     console.error("Error assigning ride:", error);
     res.status(500).json({ success: false, message: "Failed to assign ride" });
   }
 };
 
-// Clear current ride (when ride completed/cancelled)
+// Clear current ride (after completion or cancellation)
 export const clearCurrentRide = async (req, res) => {
   try {
     const { userId } = req.params;
 
+    // 1. Find driver
     const driver = await User.findById(userId);
     if (!driver || driver.role !== "driver") {
       return res.status(404).json({ success: false, message: "Driver not found" });
     }
 
-    driver.currentRide = null;
-    driver.isAvailable = true; // back online
-    await driver.save();
+    // 2. Check if driver actually has a ride
+    if (!driver.currentRide) {
+      return res.status(400).json({ success: false, message: "Driver has no active ride" });
+    }
 
-    res.json({ success: true, message: "Ride cleared", driver });
+    // 3. Find the ride
+    const ride = await Ride.findById(driver.currentRide);
+    if (!ride) {
+      return res.status(404).json({ success: false, message: "Ride not found" });
+    }
+
+    // 4. Update driver
+    driver.currentRide = null;
+    driver.isAvailable = true;
+
+    // 5. Update ride (mark it as completed or cleared)
+    ride.assignedDriver = null;
+    ride.status = "completed"; // or "cancelled", depending on your flow
+
+    // 6. Save both updates together
+    await Promise.all([driver.save(), ride.save()]);
+
+    res.json({
+      success: true,
+      message: "Ride cleared successfully",
+      driver,
+      ride,
+    });
   } catch (error) {
     console.error("Error clearing ride:", error);
     res.status(500).json({ success: false, message: "Failed to clear ride" });
