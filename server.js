@@ -12,6 +12,7 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import drivesRoutes from './routes/DriverDecision.route.js';
 import ridesRoutes from './routes/RideRequest.route.js';
+import nominatimRoutes from './routes/Nominatim.route.js';
 
 connectDB();
 
@@ -80,6 +81,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/driver', driverRoutes);
 app.use('/api/driver-decision', drivesRoutes);
 app.use('/api/rides', ridesRoutes);
+app.use('/api/nominatim',nominatimRoutes);
 
 httpServer.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
