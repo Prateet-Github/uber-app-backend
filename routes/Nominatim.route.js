@@ -5,7 +5,7 @@ import { verifyTokenOptional } from '../middlewares/TokenOptional.middleware.js'
 
 const router = express.Router();
 
-router.get('/geocode', verifyTokenOptional, nominatimLimiter, geocode);
-router.get('/reverse', verifyTokenOptional, nominatimLimiter, reverse);
+router.post('/geocode', verifyTokenOptional, nominatimLimiter, geocode);
+router.post('/reverse', verifyTokenOptional, nominatimLimiter, reverse);
 
 export default router;
